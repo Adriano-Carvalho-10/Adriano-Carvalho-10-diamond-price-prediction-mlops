@@ -25,6 +25,11 @@ def carregar_base():
     return pd.read_csv(BASE / "dados" / "diamonds.csv")
 
 
+@st.cache_data
+def carregar_experimentos():
+    return pd.read_csv(BASE / "modelos" / "tabela_experimentos.csv")
+
+
 modelo, info = carregar()
 num = info["colunas_numericas"]
 cat = info["colunas_categoricas"]
@@ -151,3 +156,83 @@ with st.expander("Explorar a base de dados"):
         )
         st.plotly_chart(fig, width="stretch")
         st.caption(f"{len(filtrada):,} diamantes na faixa selecionada.")
+
+st.divider()
+with st.expander("Comparar experimentos"):
+    st.caption("Os 7 experimentos foram avaliados no mesmo teste (20% das linhas).")
+    experimentos = carregar_experimentos()
+
+    m1, m2, m3 = st.columns(3)
+    m1.metric("Melhor RMSE", f"US$ {experimentos['rmse'].min():,.1f}")
+    m2.metric("Melhor MAE", f"US$ {experimentos['mae'].min():,.1f}")
+    m3.metric("Melhor R²", f"{experimentos['r2'].max():.4f}")
+
+    metrica = st.selectbox(
+        "Métrica do gráfico",
+        ["rmse", "mae", "r2"],
+        format_func=lambda m: {
+            "rmse": "RMSE (menor é melhor)",
+            "mae": "MAE (menor é melhor)",
+            "r2": "R² (maior é melhor)",
+        }[m],
+        key="comparar_metrica",
+    )
+
+    comparativo = experimentos.assign(
+        Experimento=experimentos["numero"].map(lambda n: f"Exp. {n}"),
+        Destaque=experimentos["numero"].eq(info["experimento"]).map(
+            {True: "Publicado", False: "Testado"}
+        ),
+    )
+    comparativo["texto"] = comparativo[metrica].map(
+        lambda v: f"{v:.4f}" if metrica == "r2" else f"US$ {v:,.1f}"
+    )
+    comparativo = comparativo.sort_values(metrica, ascending=(metrica != "r2"))
+
+    fig = px.bar(
+        comparativo,
+        x="Experimento",
+        y=metrica,
+        color="Destaque",
+        text="texto",
+        category_orders={"Destaque": ["Publicado", "Testado"]},
+        color_discrete_map={"Publicado": "#2ca02c", "Testado": "#636efa"},
+        hover_data=["algoritmo", "o_que_mudou", "rmse", "mae", "r2", "tempo_treino_s"],
+        title=f"Comparação dos experimentos por {metrica.upper()}",
+        labels={
+            "rmse": "RMSE (US$)",
+            "mae": "MAE (US$)",
+            "r2": "R²",
+            "Experimento": "",
+            "Destaque": "Modelo",
+        },
+    )
+    fig.update_traces(textposition="outside")
+    st.plotly_chart(fig, width="stretch")
+
+    tabela = experimentos.assign(
+        Status=experimentos["numero"].eq(info["experimento"]).map(
+            {True: "Publicado", False: "Testado"}
+        )
+    )[[
+        "numero",
+        "algoritmo",
+        "o_que_mudou",
+        "rmse",
+        "mae",
+        "r2",
+        "tempo_treino_s",
+        "Status",
+    ]].sort_values("numero")
+
+    st.dataframe(
+        tabela.style.format({
+            "rmse": "US$ {:,.1f}",
+            "mae": "US$ {:,.1f}",
+            "r2": "{:.4f}",
+            "tempo_treino_s": "{:.2f} s",
+        }),
+        hide_index=True,
+        width="stretch",
+    )
+    st.caption(f"Modelo publicado: experimento {info['experimento']}.")
