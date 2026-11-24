@@ -4,6 +4,7 @@ from pathlib import Path
 
 import joblib
 import pandas as pd
+import plotly.express as px
 import streamlit as st
 
 BASE = Path(__file__).parent
@@ -17,6 +18,11 @@ def carregar():
     modelo = joblib.load(BASE / "modelos" / "modelo_publicado.joblib")
     info = json.load(open(BASE / "modelos" / "info_modelo.json", encoding="utf-8"))
     return modelo, info
+
+
+@st.cache_data
+def carregar_base():
+    return pd.read_csv(BASE / "dados" / "diamonds.csv")
 
 
 modelo, info = carregar()
@@ -69,3 +75,79 @@ if ARQ_LOG.exists():
     st.dataframe(pd.read_csv(ARQ_LOG).iloc[::-1])
 else:
     st.info("Nenhuma previsão registrada ainda.")
+
+st.divider()
+with st.expander("Explorar a base de dados"):
+    st.caption("Gráficos interativos com a base usada no treinamento.")
+    dados = carregar_base()
+
+    aba1, aba2, aba3 = st.tabs([
+        "Preço x característica",
+        "Preço médio por categoria",
+        "Distribuição do preço",
+    ])
+
+    with aba1:
+        coluna_x = st.selectbox("Característica numérica (eixo X)", list(num.keys()), key="explorar_x")
+        cor = st.selectbox("Colorir por", ["Nenhuma"] + list(cat.keys()), key="explorar_cor")
+        amostra = st.slider("Pontos exibidos", 1000, len(dados), min(5000, len(dados)), 1000,
+                            key="explorar_amostra")
+        dados_plot = dados if amostra >= len(dados) else dados.sample(n=amostra, random_state=42)
+        cor_selecionada = None if cor == "Nenhuma" else cor
+        hover = [c for c in ["carat", "cut", "color", "clarity"]
+                 if c != coluna_x and c != cor_selecionada]
+        fig = px.scatter(
+            dados_plot,
+            x=coluna_x,
+            y="price",
+            color=cor_selecionada,
+            opacity=0.45,
+            hover_data=hover,
+            title=f"Preço x {coluna_x}",
+            labels={"price": "Preço (US$)"},
+        )
+        st.plotly_chart(fig, width="stretch")
+        st.caption(f"Exibindo {amostra:,} de {len(dados):,} diamantes.")
+
+    with aba2:
+        categoria = st.selectbox("Categoria", list(cat.keys()), key="explorar_cat")
+        ordem = cat[categoria]
+        media = (
+            dados.groupby(categoria)["price"]
+            .mean()
+            .reindex(ordem)
+            .reset_index()
+        )
+        media["texto"] = media["price"].map(lambda valor: f"US$ {valor:,.0f}")
+        fig = px.bar(
+            media,
+            x=categoria,
+            y="price",
+            text="texto",
+            category_orders={categoria: ordem},
+            title=f"Preço médio por {categoria}",
+            labels={"price": "Preço médio (US$)"},
+        )
+        fig.update_traces(textposition="outside")
+        st.plotly_chart(fig, width="stretch")
+
+    with aba3:
+        faixa = st.slider(
+            "Faixa de carat",
+            num["carat"][0],
+            num["carat"][1],
+            (num["carat"][0], num["carat"][1]),
+            0.01,
+            key="explorar_faixa",
+        )
+        filtrada = dados[dados["carat"].between(faixa[0], faixa[1])]
+        fig = px.histogram(
+            filtrada,
+            x="price",
+            nbins=80,
+            marginal="box",
+            title="Distribuição do preço",
+            labels={"price": "Preço (US$)"},
+        )
+        st.plotly_chart(fig, width="stretch")
+        st.caption(f"{len(filtrada):,} diamantes na faixa selecionada.")

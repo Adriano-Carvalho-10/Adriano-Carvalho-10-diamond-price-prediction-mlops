@@ -5,7 +5,7 @@
 - **Base:** Diamonds (≈54 mil diamantes, 10 colunas). Alvo: `price`. Depois da limpeza (duplicadas e medidas inválidas) ficam 53.772 linhas.
 - **Experimentos:** 7, na tabela `modelos/tabela_experimentos.csv` (e no notebook). 4 algoritmos (Regressão Linear, KNN, Random Forest, Gradient Boosting) e 3 experimentos que mudam os dados (sem a coluna `y`, metade das linhas e alvo em escala logarítmica). Todos avaliados no mesmo teste (20%).
 - **Modelo publicado:** experimento 3, Random Forest com 100 árvores (RMSE US$ 538, MAE US$ 273, R² 0,981), salvo com joblib dentro de um Pipeline do scikit-learn.
-- **App:** Streamlit. Recebe as características de um diamante, mostra o preço previsto e grava cada previsão em `registro_previsoes.csv` (data e hora, entradas, resultado e número do experimento).
+- **App:** Streamlit. Recebe as características de um diamante, mostra o preço previsto e grava cada previsão em `registro_previsoes.csv` (data e hora, entradas, resultado e número do experimento). Também tem a seção **Explorar a base de dados**, com três gráficos interativos: preço x característica, preço médio por categoria e distribuição do preço.
 
 ## Organização
 
