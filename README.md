@@ -16,7 +16,6 @@ modelos/     modelo publicado (joblib), info_modelo.json e tabela de experimento
 app.py       o aplicativo Streamlit
 requirements.txt
 README.md
-Slides.pdf   (Slides.pptx é a versão editável)
 ```
 
 ## Como rodar
