@@ -8,6 +8,7 @@ import json, time
 import joblib
 import numpy as np
 import pandas as pd
+from sklearn.base import clone
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.compose import ColumnTransformer, TransformedTargetRegressor
@@ -169,7 +170,9 @@ print("experimento publicado:", vencedor)
 print(cand.iloc[0][["algoritmo", "o_que_mudou", "resultado", "tempo_treino_s"]])
 
 # %%
-joblib.dump(pipelines[vencedor], "../modelos/modelo_publicado.joblib", compress=3)
+pipeline_final = clone(pipelines[vencedor])
+pipeline_final.fit(X_tr, y_tr)
+joblib.dump(pipeline_final, "../modelos/modelo_publicado.joblib", compress=3)
 
 info = {
     "tarefa": "regressao",
